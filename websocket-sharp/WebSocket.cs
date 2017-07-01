@@ -88,8 +88,10 @@ namespace WebSocketSharp
     private bool                           _fragmentsCompressed;
     private Opcode                         _fragmentsOpcode;
     private const string                   _guid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+#if !CLIENT_ONLY
     private Func<WebSocketContext, string> _handshakeRequestChecker;
     private bool                           _ignoreExtensions;
+#endif
     private bool                           _inContinuation;
     private volatile bool                  _inMessage;
     private volatile Logger                _logger;
@@ -116,9 +118,9 @@ namespace WebSocketSharp
     private const string                   _version = "13";
     private TimeSpan                       _waitTime;
 
-    #endregion
+#endregion
 
-    #region Internal Fields
+#region Internal Fields
 
     /// <summary>
     /// Represents the empty array of <see cref="byte"/> used internally.
@@ -144,9 +146,9 @@ namespace WebSocketSharp
     /// </summary>
     internal static readonly RandomNumberGenerator RandomNumber;
 
-    #endregion
+#endregion
 
-    #region Static Constructor
+#region Static Constructor
 
     static WebSocket ()
     {
@@ -156,10 +158,11 @@ namespace WebSocketSharp
       RandomNumber = new RNGCryptoServiceProvider ();
     }
 
-    #endregion
+#endregion
 
-    #region Internal Constructors
+#region Internal Constructors
 
+#if !CLIENT_ONLY
     // As server
     internal WebSocket (HttpListenerWebSocketContext context, string protocol)
     {
@@ -191,10 +194,10 @@ namespace WebSocketSharp
 
       init ();
     }
+#endif
+#endregion
 
-    #endregion
-
-    #region Public Constructors
+#region Public Constructors
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WebSocket"/> class with
@@ -252,9 +255,9 @@ namespace WebSocketSharp
       init ();
     }
 
-    #endregion
+#endregion
 
-    #region Internal Properties
+#region Internal Properties
 
     internal CookieCollection CookieCollection {
       get {
@@ -262,6 +265,7 @@ namespace WebSocketSharp
       }
     }
 
+#if !CLIENT_ONLY
     // As server
     internal Func<WebSocketContext, string> CustomHandshakeRequestChecker {
       get {
@@ -272,6 +276,7 @@ namespace WebSocketSharp
         _handshakeRequestChecker = value;
       }
     }
+#endif
 
     internal bool HasMessage {
       get {
@@ -280,6 +285,7 @@ namespace WebSocketSharp
       }
     }
 
+#if !CLIENT_ONLY
     // As server
     internal bool IgnoreExtensions {
       get {
@@ -290,6 +296,7 @@ namespace WebSocketSharp
         _ignoreExtensions = value;
       }
     }
+#endif
 
     internal bool IsConnected {
       get {
@@ -297,9 +304,9 @@ namespace WebSocketSharp
       }
     }
 
-    #endregion
+#endregion
 
-    #region Public Properties
+#region Public Properties
 
     /// <summary>
     /// Gets or sets the compression method used to compress a message on
@@ -624,9 +631,9 @@ namespace WebSocketSharp
       }
     }
 
-    #endregion
+#endregion
 
-    #region Public Events
+#region Public Events
 
     /// <summary>
     /// Occurs when the WebSocket connection has been closed.
@@ -648,10 +655,11 @@ namespace WebSocketSharp
     /// </summary>
     public event EventHandler OnOpen;
 
-    #endregion
+#endregion
 
-    #region Private Methods
+#region Private Methods
 
+#if !CLIENT_ONLY
     // As server
     private bool accept ()
     {
@@ -756,6 +764,7 @@ namespace WebSocketSharp
 
       return true;
     }
+#endif
 
     // As client
     private bool checkHandshakeResponse (HttpResponse response, out string message)
@@ -1156,6 +1165,7 @@ namespace WebSocketSharp
       return null;
     }
 
+#if !CLIENT_ONLY
     // As server
     private HttpResponse createHandshakeFailureResponse (HttpStatusCode code)
     {
@@ -1164,6 +1174,7 @@ namespace WebSocketSharp
 
       return ret;
     }
+#endif
 
     // As client
     private HttpRequest createHandshakeRequest ()
@@ -1204,6 +1215,7 @@ namespace WebSocketSharp
       return ret;
     }
 
+#if !CLIENT_ONLY
     // As server
     private HttpResponse createHandshakeResponse ()
     {
@@ -1231,6 +1243,7 @@ namespace WebSocketSharp
       return _handshakeRequestChecker == null
              || (message = _handshakeRequestChecker (context)) == null;
     }
+#endif
 
     private MessageEventArgs dequeueFromMessageEventQueue ()
     {
@@ -1533,6 +1546,7 @@ namespace WebSocketSharp
                      : processUnsupportedFrame (frame);
     }
 
+#if !CLIENT_ONLY
     // As server
     private void processSecWebSocketExtensionsClientHeader (string value)
     {
@@ -1563,6 +1577,7 @@ namespace WebSocketSharp
         _extensions = buff.ToString ();
       }
     }
+#endif
 
     // As client
     private void processSecWebSocketExtensionsServerHeader (string value)
@@ -1575,6 +1590,7 @@ namespace WebSocketSharp
       _extensions = value;
     }
 
+#if !CLIENT_ONLY
     // As server
     private void processSecWebSocketProtocolHeader (IEnumerable<string> values)
     {
@@ -1583,6 +1599,7 @@ namespace WebSocketSharp
 
       _protocol = null;
     }
+#endif
 
     private bool processUnsupportedFrame (WebSocketFrame frame)
     {
@@ -1850,12 +1867,14 @@ namespace WebSocketSharp
       return res;
     }
 
+#if !CLIENT_ONLY
     // As server
     private bool sendHttpResponse (HttpResponse response)
     {
       _logger.Debug ("A response to this request:\n" + response.ToString ());
       return sendBytes (response.ToByteArray ());
     }
+#endif
 
     // As client
     private void sendProxyConnectRequest ()
@@ -1982,11 +2001,13 @@ namespace WebSocketSharp
       return value != null && value == CreateResponseKey (_base64Key);
     }
 
+#if !CLIENT_ONLY
     // As server
     private bool validateSecWebSocketExtensionsClientHeader (string value)
     {
       return value == null || value.Length > 0;
     }
+#endif
 
     // As client
     private bool validateSecWebSocketExtensionsServerHeader (string value)
@@ -2034,6 +2055,7 @@ namespace WebSocketSharp
       return true;
     }
 
+#if !CLIENT_ONLY
     // As server
     private bool validateSecWebSocketKeyHeader (string value)
     {
@@ -2045,6 +2067,7 @@ namespace WebSocketSharp
     {
       return value == null || value.Length > 0;
     }
+#endif
 
     // As client
     private bool validateSecWebSocketProtocolServerHeader (string value)
@@ -2058,11 +2081,13 @@ namespace WebSocketSharp
       return _protocolsRequested && _protocols.Contains (p => p == value);
     }
 
+#if !CLIENT_ONLY
     // As server
     private bool validateSecWebSocketVersionClientHeader (string value)
     {
       return value != null && value == _version;
     }
+#endif
 
     // As client
     private bool validateSecWebSocketVersionServerHeader (string value)
@@ -2070,9 +2095,9 @@ namespace WebSocketSharp
       return value == null || value == _version;
     }
 
-    #endregion
+#endregion
 
-    #region Internal Methods
+#region Internal Methods
 
     internal static bool CheckParametersForClose (
       ushort code, string reason, bool client, out string message
@@ -2169,6 +2194,7 @@ namespace WebSocketSharp
                  : null;
     }
 
+#if !CLIENT_ONLY
     // As server
     internal void Close (HttpResponse response)
     {
@@ -2235,6 +2261,7 @@ namespace WebSocketSharp
         _logger.Error (ex.ToString ());
       }
     }
+#endif
 
     // As client
     internal static string CreateBase64Key ()
@@ -2255,6 +2282,7 @@ namespace WebSocketSharp
       return Convert.ToBase64String (src);
     }
 
+#if !CLIENT_ONLY
     // As server
     internal void InternalAccept ()
     {
@@ -2273,6 +2301,7 @@ namespace WebSocketSharp
 
       open ();
     }
+#endif
 
     internal bool Ping (byte[] frameAsBytes, TimeSpan timeout)
     {
@@ -2305,6 +2334,7 @@ namespace WebSocketSharp
       }
     }
 
+#if !CLIENT_ONLY
     // As server, used to broadcast
     internal void Send (
       Opcode opcode, byte[] data, Dictionary<CompressionMethod, byte[]> cache
@@ -2365,11 +2395,13 @@ namespace WebSocketSharp
         }
       }
     }
+#endif
 
-    #endregion
+#endregion
 
-    #region Public Methods
+#region Public Methods
 
+#if !CLIENT_ONLY
     /// <summary>
     /// Accepts the WebSocket handshake request.
     /// </summary>
@@ -2420,6 +2452,7 @@ namespace WebSocketSharp
         null
       );
     }
+#endif
 
     /// <summary>
     /// Closes the WebSocket connection, and releases all associated resources.
@@ -3354,9 +3387,9 @@ namespace WebSocketSharp
       }
     }
 
-    #endregion
+#endregion
 
-    #region Explicit Interface Implementations
+#region Explicit Interface Implementations
 
     /// <summary>
     /// Closes the WebSocket connection, and releases all associated resources.
@@ -3375,6 +3408,6 @@ namespace WebSocketSharp
       close (1001, String.Empty);
     }
 
-    #endregion
+#endregion
   }
 }

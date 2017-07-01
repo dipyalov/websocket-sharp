@@ -55,7 +55,9 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using WebSocketSharp.Net;
 using WebSocketSharp.Net.WebSockets;
+#if !CLIENT_ONLY
 using WebSocketSharp.Server;
+#endif
 
 namespace WebSocketSharp
 {
@@ -163,6 +165,7 @@ namespace WebSocketSharp
       return ret;
     }
 
+#if !CLIENT_ONLY
     internal static string CheckIfAvailable (
       this ServerState state, bool ready, bool start, bool shutting)
     {
@@ -172,6 +175,7 @@ namespace WebSocketSharp
              ? "This operation isn't available in: " + state.ToString ().ToLower ()
              : null;
     }
+#endif
 
     internal static string CheckIfAvailable (
       this WebSocketState state, bool connecting, bool open, bool closing, bool closed)
@@ -211,6 +215,7 @@ namespace WebSocketSharp
       return true;
     }
 
+#if !CLIENT_ONLY
     internal static void Close (this HttpListenerResponse response, HttpStatusCode code)
     {
       response.StatusCode = (int) code;
@@ -223,6 +228,7 @@ namespace WebSocketSharp
       response.Headers.InternalSet ("WWW-Authenticate", challenge, true);
       response.Close (HttpStatusCode.Unauthorized);
     }
+#endif
 
     internal static byte[] Compress (this byte[] data, CompressionMethod method)
     {
@@ -480,6 +486,7 @@ namespace WebSocketSharp
       return unquote ? val.Unquote () : val;
     }
 
+#if !CLIENT_ONLY
     internal static TcpListenerWebSocketContext GetWebSocketContext (
       this TcpClient tcpClient,
       string protocol,
@@ -489,6 +496,7 @@ namespace WebSocketSharp
     {
       return new TcpListenerWebSocketContext (tcpClient, protocol, secure, sslConfig, logger);
     }
+#endif
 
     internal static byte[] InternalToByteArray (this ushort value, ByteOrder order)
     {
@@ -1073,9 +1081,9 @@ namespace WebSocketSharp
         });
     }
 
-    #endregion
+#endregion
 
-    #region Public Methods
+#region Public Methods
 
     /// <summary>
     /// Determines whether the specified <see cref="string"/> contains any of characters in
@@ -1472,6 +1480,7 @@ namespace WebSocketSharp
       return false;
     }
 
+#if !CLIENT_ONLY
     /// <summary>
     /// Determines whether the specified <see cref="HttpListenerRequest"/> is
     /// an HTTP Upgrade request to switch to the specified <paramref name="protocol"/>.
@@ -1514,6 +1523,7 @@ namespace WebSocketSharp
       return request.Headers.Contains ("Upgrade", protocol) &&
              request.Headers.Contains ("Connection", "Upgrade");
     }
+#endif
 
     /// <summary>
     /// Determines whether the specified <see cref="string"/> is a URI string.
@@ -1976,6 +1986,7 @@ namespace WebSocketSharp
              : value;
     }
 
+#if !CLIENT_ONLY
     /// <summary>
     /// Writes and sends the specified <paramref name="content"/> data with the specified
     /// <see cref="HttpListenerResponse"/>.
@@ -2021,7 +2032,8 @@ namespace WebSocketSharp
 
       output.Close ();
     }
+#endif
 
-    #endregion
+#endregion
   }
 }
