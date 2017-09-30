@@ -2,8 +2,6 @@
 /*
  * WebSocketServer.cs
  *
- * A C# implementation of the WebSocket protocol server.
- *
  * The MIT License
  *
  * Copyright (c) 2012-2015 sta.blockhead
@@ -139,7 +137,7 @@ namespace WebSocketSharp.Server
     /// <remarks>
     ///   <para>
     ///   The new instance listens for incoming handshake requests on
-    ///   the local IP address of the host of <paramref name="url"/> and
+    ///   the IP address of the host of <paramref name="url"/> and
     ///   the port of <paramref name="url"/>.
     ///   </para>
     ///   <para>
@@ -148,20 +146,19 @@ namespace WebSocketSharp.Server
     ///   is wss; otherwise, port 80 is used.
     ///   </para>
     ///   <para>
-    ///   That instance provides secure connections if the scheme of
+    ///   The new instance provides secure connections if the scheme of
     ///   <paramref name="url"/> is wss.
     ///   </para>
     /// </remarks>
     /// <param name="url">
-    /// A <see cref="string"/> that represents the WebSocket URL
-    /// on which to listen.
+    /// A <see cref="string"/> that represents the WebSocket URL of the server.
     /// </param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="url"/> is <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
     ///   <para>
-    ///   <paramref name="url"/> is empty.
+    ///   <paramref name="url"/> is an empty string.
     ///   </para>
     ///   <para>
     ///   -or-
@@ -243,8 +240,8 @@ namespace WebSocketSharp.Server
     ///   </para>
     /// </remarks>
     /// <param name="address">
-    /// A <see cref="System.Net.IPAddress"/> that represents
-    /// the local IP address on which to listen.
+    /// A <see cref="System.Net.IPAddress"/> that represents the local
+    /// IP address on which to listen.
     /// </param>
     /// <param name="port">
     /// An <see cref="int"/> that represents the number of the port
@@ -274,8 +271,8 @@ namespace WebSocketSharp.Server
     /// <paramref name="address"/> and <paramref name="port"/>.
     /// </remarks>
     /// <param name="address">
-    /// A <see cref="System.Net.IPAddress"/> that represents
-    /// the local IP address on which to listen.
+    /// A <see cref="System.Net.IPAddress"/> that represents the local
+    /// IP address on which to listen.
     /// </param>
     /// <param name="port">
     /// An <see cref="int"/> that represents the number of the port
@@ -328,16 +325,16 @@ namespace WebSocketSharp.Server
     }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the server accepts
-    /// a handshake request without checking the request URI.
+    /// Gets or sets a value indicating whether the server accepts every
+    /// handshake request without checking the request URI.
     /// </summary>
     /// <remarks>
-    /// The set operation does nothing if the server has already
-    /// started or it is shutting down.
+    /// The set operation does nothing if the server has already started or
+    /// it is shutting down.
     /// </remarks>
     /// <value>
     ///   <para>
-    ///   <c>true</c> if the server accepts a handshake request without
+    ///   <c>true</c> if the server accepts every handshake request without
     ///   checking the request URI; otherwise, <c>false</c>.
     ///   </para>
     ///   <para>
@@ -371,8 +368,8 @@ namespace WebSocketSharp.Server
     /// Gets or sets the scheme used to authenticate the clients.
     /// </summary>
     /// <remarks>
-    /// The set operation does nothing if the server has already
-    /// started or it is shutting down.
+    /// The set operation does nothing if the server has already started or
+    /// it is shutting down.
     /// </remarks>
     /// <value>
     ///   <para>
@@ -441,13 +438,13 @@ namespace WebSocketSharp.Server
     /// the inactive sessions periodically.
     /// </summary>
     /// <remarks>
-    /// The set operation does nothing if the server has already
-    /// started or it is shutting down.
+    /// The set operation does nothing if the server has already started or
+    /// it is shutting down.
     /// </remarks>
     /// <value>
     ///   <para>
-    ///   <c>true</c> if the server cleans up the inactive sessions
-    ///   every 60 seconds; otherwise, <c>false</c>.
+    ///   <c>true</c> if the server cleans up the inactive sessions every
+    ///   60 seconds; otherwise, <c>false</c>.
     ///   </para>
     ///   <para>
     ///   The default value is <c>true</c>.
@@ -459,20 +456,7 @@ namespace WebSocketSharp.Server
       }
 
       set {
-        string msg;
-        if (!canSet (out msg)) {
-          _log.Warn (msg);
-          return;
-        }
-
-        lock (_sync) {
-          if (!canSet (out msg)) {
-            _log.Warn (msg);
-            return;
-          }
-
-          _services.KeepClean = value;
-        }
+        _services.KeepClean = value;
       }
     }
 
@@ -509,18 +493,17 @@ namespace WebSocketSharp.Server
     /// </summary>
     /// <remarks>
     ///   <para>
-    ///   The set operation does nothing if the server has already
-    ///   started or it is shutting down.
+    ///   "SECRET AREA" is used as the realm if the value is
+    ///   <see langword="null"/> or an empty string.
     ///   </para>
     ///   <para>
-    ///   SECRET AREA will be used as the name if the value is
-    ///   <see langword="null"/> or an empty string.
+    ///   The set operation does nothing if the server has
+    ///   already started or it is shutting down.
     ///   </para>
     /// </remarks>
     /// <value>
     ///   <para>
-    ///   A <see cref="string"/> or <see langword="null"/>
-    ///   by default.
+    ///   A <see cref="string"/> or <see langword="null"/> by default.
     ///   </para>
     ///   <para>
     ///   That string represents the name of the realm.
@@ -555,12 +538,12 @@ namespace WebSocketSharp.Server
     /// </summary>
     /// <remarks>
     ///   <para>
-    ///   The set operation does nothing if the server has already
-    ///   started or it is shutting down.
-    ///   </para>
-    ///   <para>
     ///   You should set this property to <c>true</c> if you would
     ///   like to resolve to wait for socket in TIME_WAIT state.
+    ///   </para>
+    ///   <para>
+    ///   The set operation does nothing if the server has already
+    ///   started or it is shutting down.
     ///   </para>
     /// </remarks>
     /// <value>
@@ -616,23 +599,24 @@ namespace WebSocketSharp.Server
     }
 
     /// <summary>
-    /// Gets or sets the delegate used to find the credentials for
-    /// an identity.
+    /// Gets or sets the delegate used to find the credentials
+    /// for an identity.
     /// </summary>
     /// <remarks>
-    ///   <para>
-    ///   The set operation does nothing if the server has already
-    ///   started or it is shutting down.
-    ///   </para>
     ///   <para>
     ///   No credentials are found if the method invoked by
     ///   the delegate returns <see langword="null"/> or
     ///   the value is <see langword="null"/>.
     ///   </para>
+    ///   <para>
+    ///   The set operation does nothing if the server has
+    ///   already started or it is shutting down.
+    ///   </para>
     /// </remarks>
     /// <value>
     ///   <para>
-    ///   A <c>Func&lt;IIdentity, NetworkCredential&gt;</c> delegate or
+    ///   A <c>Func&lt;<see cref="IIdentity"/>,
+    ///   <see cref="NetworkCredential"/>&gt;</c> delegate or
     ///   <see langword="null"/> if not needed.
     ///   </para>
     ///   <para>
@@ -667,12 +651,12 @@ namespace WebSocketSharp.Server
     }
 
     /// <summary>
-    /// Gets or sets the time to wait for the response to
-    /// the WebSocket Ping or Close.
+    /// Gets or sets the time to wait for the response to the WebSocket Ping or
+    /// Close.
     /// </summary>
     /// <remarks>
-    /// The set operation does nothing if the server has already
-    /// started or it is shutting down.
+    /// The set operation does nothing if the server has already started or
+    /// it is shutting down.
     /// </remarks>
     /// <value>
     ///   <para>
@@ -682,7 +666,7 @@ namespace WebSocketSharp.Server
     ///   The default value is the same as 1 second.
     ///   </para>
     /// </value>
-    /// <exception cref="ArgumentException">
+    /// <exception cref="ArgumentOutOfRangeException">
     /// The value specified for a set operation is zero or less.
     /// </exception>
     public TimeSpan WaitTime {
@@ -691,23 +675,7 @@ namespace WebSocketSharp.Server
       }
 
       set {
-        string msg;
-        if (!value.CheckWaitTime (out msg))
-          throw new ArgumentException (msg, "value");
-
-        if (!canSet (out msg)) {
-          _log.Warn (msg);
-          return;
-        }
-
-        lock (_sync) {
-          if (!canSet (out msg)) {
-            _log.Warn (msg);
-            return;
-          }
-
-          _services.WaitTime = value;
-        }
+        _services.WaitTime = value;
       }
     }
 
@@ -866,8 +834,9 @@ namespace WebSocketSharp.Server
           ThreadPool.QueueUserWorkItem (
             state => {
               try {
-                var ctx =
-                  cl.GetWebSocketContext (null, _secure, _sslConfigInUse, _log);
+                var ctx = new TcpListenerWebSocketContext (
+                            cl, null, _secure, _sslConfigInUse, _log
+                          );
 
                 if (!ctx.Authenticate (_authSchemes, _realmInUse, _userCredFinder))
                   return;
@@ -875,7 +844,7 @@ namespace WebSocketSharp.Server
                 processRequest (ctx);
               }
               catch (Exception ex) {
-                _log.Fatal (ex.Message);
+                _log.Error (ex.Message);
                 _log.Debug (ex.ToString ());
 
                 cl.Close ();
@@ -885,7 +854,7 @@ namespace WebSocketSharp.Server
         }
         catch (SocketException ex) {
           if (_state == ServerState.ShuttingDown) {
-            _log.Info ("The receiving is stopped.");
+            _log.Info ("The underlying listener is stopped.");
             break;
           }
 
@@ -956,7 +925,14 @@ namespace WebSocketSharp.Server
         );
       }
 
-      _listener.Start ();
+      try {
+        _listener.Start ();
+      }
+      catch (Exception ex) {
+        var msg = "The underlying listener has failed to start.";
+        throw new InvalidOperationException (msg, ex);
+      }
+
       _receiveThread = new Thread (new ThreadStart (receiveRequest));
       _receiveThread.IsBackground = true;
       _receiveThread.Start ();
@@ -1019,7 +995,14 @@ namespace WebSocketSharp.Server
 
     private void stopReceiving (int millisecondsTimeout)
     {
-      _listener.Stop ();
+      try {
+        _listener.Stop ();
+      }
+      catch (Exception ex) {
+        var msg = "The underlying listener has failed to stop.";
+        throw new InvalidOperationException (msg, ex);
+      }
+
       _receiveThread.Join (millisecondsTimeout);
     }
 
@@ -1050,7 +1033,7 @@ namespace WebSocketSharp.Server
     /// </summary>
     /// <remarks>
     /// <paramref name="path"/> is converted to a URL-decoded string and
-    /// / is trimmed from the end of the converted string if any.
+    /// '/' is trimmed from the end of the converted string if any.
     /// </remarks>
     /// <param name="path">
     /// A <see cref="string"/> that represents an absolute path to
@@ -1061,17 +1044,21 @@ namespace WebSocketSharp.Server
     ///   A <c>Func&lt;TBehavior&gt;</c> delegate.
     ///   </para>
     ///   <para>
-    ///   It invokes the method called for creating
-    ///   a new session instance for the service.
+    ///   It invokes the method called for creating a new session
+    ///   instance for the service.
     ///   </para>
     ///   <para>
-    ///   The method must create a new instance of
-    ///   the specified behavior class and return it.
+    ///   The method must create a new instance of the specified
+    ///   behavior class and return it.
     ///   </para>
     /// </param>
     /// <typeparam name="TBehavior">
-    /// The type of the behavior for the service. It must inherit
-    /// the <see cref="WebSocketBehavior"/> class.
+    ///   <para>
+    ///   The type of the behavior for the service.
+    ///   </para>
+    ///   <para>
+    ///   It must inherit the <see cref="WebSocketBehavior"/> class.
+    ///   </para>
     /// </typeparam>
     /// <exception cref="ArgumentNullException">
     ///   <para>
@@ -1086,7 +1073,7 @@ namespace WebSocketSharp.Server
     /// </exception>
     /// <exception cref="ArgumentException">
     ///   <para>
-    ///   <paramref name="path"/> is empty.
+    ///   <paramref name="path"/> is an empty string.
     ///   </para>
     ///   <para>
     ///   -or-
@@ -1140,23 +1127,27 @@ namespace WebSocketSharp.Server
     /// </summary>
     /// <remarks>
     /// <paramref name="path"/> is converted to a URL-decoded string and
-    /// / is trimmed from the end of the converted string if any.
+    /// '/' is trimmed from the end of the converted string if any.
     /// </remarks>
     /// <param name="path">
     /// A <see cref="string"/> that represents an absolute path to
     /// the service to add.
     /// </param>
     /// <typeparam name="TBehaviorWithNew">
-    /// The type of the behavior for the service. It must inherit
-    /// the <see cref="WebSocketBehavior"/> class and it must have
-    /// a public parameterless constructor.
+    ///   <para>
+    ///   The type of the behavior for the service.
+    ///   </para>
+    ///   <para>
+    ///   It must inherit the <see cref="WebSocketBehavior"/> class and
+    ///   have a public parameterless constructor.
+    ///   </para>
     /// </typeparam>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="path"/> is <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
     ///   <para>
-    ///   <paramref name="path"/> is empty.
+    ///   <paramref name="path"/> is an empty string.
     ///   </para>
     ///   <para>
     ///   -or-
@@ -1190,7 +1181,7 @@ namespace WebSocketSharp.Server
     /// </summary>
     /// <remarks>
     /// <paramref name="path"/> is converted to a URL-decoded string and
-    /// / is trimmed from the end of the converted string if any.
+    /// '/' is trimmed from the end of the converted string if any.
     /// </remarks>
     /// <param name="path">
     /// A <see cref="string"/> that represents an absolute path to
@@ -1207,16 +1198,20 @@ namespace WebSocketSharp.Server
     ///   </para>
     /// </param>
     /// <typeparam name="TBehaviorWithNew">
-    /// The type of the behavior for the service. It must inherit
-    /// the <see cref="WebSocketBehavior"/> class and it must have
-    /// a public parameterless constructor.
+    ///   <para>
+    ///   The type of the behavior for the service.
+    ///   </para>
+    ///   <para>
+    ///   It must inherit the <see cref="WebSocketBehavior"/> class and
+    ///   have a public parameterless constructor.
+    ///   </para>
     /// </typeparam>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="path"/> is <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
     ///   <para>
-    ///   <paramref name="path"/> is empty.
+    ///   <paramref name="path"/> is an empty string.
     ///   </para>
     ///   <para>
     ///   -or-
@@ -1252,7 +1247,7 @@ namespace WebSocketSharp.Server
     /// <remarks>
     ///   <para>
     ///   <paramref name="path"/> is converted to a URL-decoded string and
-    ///   / is trimmed from the end of the converted string if any.
+    ///   '/' is trimmed from the end of the converted string if any.
     ///   </para>
     ///   <para>
     ///   The service is stopped with close status 1001 (going away)
@@ -1272,7 +1267,7 @@ namespace WebSocketSharp.Server
     /// </exception>
     /// <exception cref="ArgumentException">
     ///   <para>
-    ///   <paramref name="path"/> is empty.
+    ///   <paramref name="path"/> is an empty string.
     ///   </para>
     ///   <para>
     ///   -or-
@@ -1297,8 +1292,8 @@ namespace WebSocketSharp.Server
     /// Starts receiving incoming handshake requests.
     /// </summary>
     /// <remarks>
-    /// This method does nothing if the server has already
-    /// started or it is shutting down.
+    /// This method does nothing if the server has already started or
+    /// it is shutting down.
     /// </remarks>
     /// <exception cref="InvalidOperationException">
     ///   <para>
@@ -1310,9 +1305,12 @@ namespace WebSocketSharp.Server
     ///   <para>
     ///   There is no certificate in the configuration.
     ///   </para>
-    /// </exception>
-    /// <exception cref="SocketException">
-    /// The underlying <see cref="TcpListener"/> has failed to start.
+    ///   <para>
+    ///   -or-
+    ///   </para>
+    ///   <para>
+    ///   The underlying <see cref="TcpListener"/> has failed to start.
+    ///   </para>
     /// </exception>
     public void Start ()
     {
@@ -1326,14 +1324,14 @@ namespace WebSocketSharp.Server
     }
 
     /// <summary>
-    /// Stops receiving incoming handshake requests and
-    /// closes each connection.
+    /// Stops receiving incoming handshake requests and closes
+    /// each connection.
     /// </summary>
     /// <remarks>
     /// This method does nothing if the server is not started,
     /// it is shutting down, or it has already stopped.
     /// </remarks>
-    /// <exception cref="SocketException">
+    /// <exception cref="InvalidOperationException">
     /// The underlying <see cref="TcpListener"/> has failed to stop.
     /// </exception>
     public void Stop ()
@@ -1362,8 +1360,12 @@ namespace WebSocketSharp.Server
     ///   </para>
     /// </param>
     /// <param name="reason">
-    /// A <see cref="string"/> that represents the reason for the close.
-    /// The size must be 123 bytes or less in UTF-8.
+    ///   <para>
+    ///   A <see cref="string"/> that represents the reason for the close.
+    ///   </para>
+    ///   <para>
+    ///   The size must be 123 bytes or less in UTF-8.
+    ///   </para>
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     ///   <para>
@@ -1394,7 +1396,7 @@ namespace WebSocketSharp.Server
     ///   <paramref name="reason"/> could not be UTF-8-encoded.
     ///   </para>
     /// </exception>
-    /// <exception cref="SocketException">
+    /// <exception cref="InvalidOperationException">
     /// The underlying <see cref="TcpListener"/> has failed to stop.
     /// </exception>
     public void Stop (ushort code, string reason)
@@ -1448,12 +1450,13 @@ namespace WebSocketSharp.Server
     ///   </para>
     /// </param>
     /// <param name="reason">
-    /// A <see cref="string"/> that represents the reason for the close.
-    /// The size must be 123 bytes or less in UTF-8.
+    ///   <para>
+    ///   A <see cref="string"/> that represents the reason for the close.
+    ///   </para>
+    ///   <para>
+    ///   The size must be 123 bytes or less in UTF-8.
+    ///   </para>
     /// </param>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// The size of <paramref name="reason"/> is greater than 123 bytes.
-    /// </exception>
     /// <exception cref="ArgumentException">
     ///   <para>
     ///   <paramref name="code"/> is
@@ -1474,7 +1477,10 @@ namespace WebSocketSharp.Server
     ///   <paramref name="reason"/> could not be UTF-8-encoded.
     ///   </para>
     /// </exception>
-    /// <exception cref="SocketException">
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The size of <paramref name="reason"/> is greater than 123 bytes.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
     /// The underlying <see cref="TcpListener"/> has failed to stop.
     /// </exception>
     public void Stop (CloseStatusCode code, string reason)

@@ -4,7 +4,7 @@
  *
  * The MIT License
  *
- * Copyright (c) 2012-2015 sta.blockhead
+ * Copyright (c) 2012-2017 sta.blockhead
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -76,10 +76,11 @@ namespace WebSocketSharp.Server
     #region Public Properties
 
     /// <summary>
-    /// Gets the HTTP request data sent from a client.
+    /// Gets the request data sent from a client.
     /// </summary>
     /// <value>
-    /// A <see cref="HttpListenerRequest"/> that represents the request data.
+    /// A <see cref="HttpListenerRequest"/> that provides the methods and
+    /// properties for the request data.
     /// </value>
     public HttpListenerRequest Request {
       get {
@@ -88,10 +89,11 @@ namespace WebSocketSharp.Server
     }
 
     /// <summary>
-    /// Gets the HTTP response data to return to the client.
+    /// Gets the response data to return to the client.
     /// </summary>
     /// <value>
-    /// A <see cref="HttpListenerResponse"/> that represents the response data.
+    /// A <see cref="HttpListenerResponse"/> that provides the methods and
+    /// properties for the response data.
     /// </value>
     public HttpListenerResponse Response {
       get {
@@ -125,14 +127,10 @@ namespace WebSocketSharp.Server
     private string createFilePath (string childPath)
     {
       childPath = childPath.TrimStart ('/', '\\');
-
-      var buff = new StringBuilder (_docRootPath, 32);
-      if (_docRootPath == "/" || _docRootPath == "\\")
-        buff.Append (childPath);
-      else
-        buff.AppendFormat ("/{0}", childPath);
-
-      return buff.ToString ().Replace ('\\', '/');
+      return new StringBuilder (_docRootPath, 32)
+             .AppendFormat ("/{0}", childPath)
+             .ToString ()
+             .Replace ('\\', '/');
     }
 
     private static bool tryReadFile (string path, out byte[] contents)
@@ -157,13 +155,13 @@ namespace WebSocketSharp.Server
     #region Public Methods
 
     /// <summary>
-    /// Reads a file with the specified <paramref name="path"/> from
-    /// the document folder of the <see cref="HttpServer"/>.
+    /// Reads the specified file from the document folder of
+    /// the <see cref="HttpServer"/>.
     /// </summary>
     /// <returns>
     ///   <para>
     ///   An array of <see cref="byte"/> or <see langword="null"/>
-    ///   if the file could not be read.
+    ///   if it fails.
     ///   </para>
     ///   <para>
     ///   That array receives the contents of the file.
@@ -184,7 +182,7 @@ namespace WebSocketSharp.Server
     ///   -or-
     ///   </para>
     ///   <para>
-    ///   <paramref name="path"/> is an invalid path.
+    ///   <paramref name="path"/> contains "..".
     ///   </para>
     /// </exception>
     public byte[] ReadFile (string path)
@@ -195,17 +193,8 @@ namespace WebSocketSharp.Server
       if (path.Length == 0)
         throw new ArgumentException ("An empty string.", "path");
 
-      if (path.IndexOf (':') > -1)
-        throw new ArgumentException ("It contains ':'.", "path");
-
       if (path.IndexOf ("..") > -1)
         throw new ArgumentException ("It contains '..'.", "path");
-
-      if (path.IndexOf ("//") > -1)
-        throw new ArgumentException ("It contains '//'.", "path");
-
-      if (path.IndexOf ("\\\\") > -1)
-        throw new ArgumentException ("It contains '\\\\'.", "path");
 
       byte[] contents;
       tryReadFile (createFilePath (path), out contents);
@@ -214,12 +203,11 @@ namespace WebSocketSharp.Server
     }
 
     /// <summary>
-    /// Tries to read a file with the specified <paramref name="path"/>
-    /// from the document folder of the <see cref="HttpServer"/>.
+    /// Tries to read the specified file from the document folder of
+    /// the <see cref="HttpServer"/>.
     /// </summary>
     /// <returns>
-    /// <c>true</c> if the file could successfully be read;
-    /// otherwise, <c>false</c>.
+    /// <c>true</c> if it succeeds to read; otherwise, <c>false</c>.
     /// </returns>
     /// <param name="path">
     /// A <see cref="string"/> that represents a virtual path to
@@ -228,7 +216,7 @@ namespace WebSocketSharp.Server
     /// <param name="contents">
     ///   <para>
     ///   When this method returns, an array of <see cref="byte"/> or
-    ///   <see langword="null"/> if the file could not be read.
+    ///   <see langword="null"/> if it fails.
     ///   </para>
     ///   <para>
     ///   That array receives the contents of the file.
@@ -245,7 +233,7 @@ namespace WebSocketSharp.Server
     ///   -or-
     ///   </para>
     ///   <para>
-    ///   <paramref name="path"/> is an invalid path.
+    ///   <paramref name="path"/> contains "..".
     ///   </para>
     /// </exception>
     public bool TryReadFile (string path, out byte[] contents)
@@ -256,17 +244,8 @@ namespace WebSocketSharp.Server
       if (path.Length == 0)
         throw new ArgumentException ("An empty string.", "path");
 
-      if (path.IndexOf (':') > -1)
-        throw new ArgumentException ("It contains ':'.", "path");
-
       if (path.IndexOf ("..") > -1)
         throw new ArgumentException ("It contains '..'.", "path");
-
-      if (path.IndexOf ("//") > -1)
-        throw new ArgumentException ("It contains '//'.", "path");
-
-      if (path.IndexOf ("\\\\") > -1)
-        throw new ArgumentException ("It contains '\\\\'.", "path");
 
       return tryReadFile (createFilePath (path), out contents);
     }

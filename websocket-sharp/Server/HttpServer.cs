@@ -2,7 +2,7 @@
 /*
  * HttpServer.cs
  *
- * A simple HTTP server that allows to accept the WebSocket connection requests.
+ * A simple HTTP server that allows to accept WebSocket handshake requests.
  *
  * The MIT License
  *
@@ -52,22 +52,23 @@ using WebSocketSharp.Net.WebSockets;
 namespace WebSocketSharp.Server
 {
   /// <summary>
-  /// Provides a simple HTTP server that allows to accept the WebSocket connection requests.
+  /// Provides a simple HTTP server that allows to accept
+  /// WebSocket handshake requests.
   /// </summary>
   /// <remarks>
-  /// The HttpServer class can provide multiple WebSocket services.
+  /// This class can provide multiple WebSocket services.
   /// </remarks>
   public class HttpServer
   {
     #region Private Fields
 
     private System.Net.IPAddress    _address;
+    private string                  _docRootPath;
     private string                  _hostname;
     private HttpListener            _listener;
     private Logger                  _log;
     private int                     _port;
     private Thread                  _receiveThread;
-    private string                  _rootPath;
     private bool                    _secure;
     private WebSocketServiceManager _services;
     private volatile ServerState    _state;
@@ -81,7 +82,8 @@ namespace WebSocketSharp.Server
     /// Initializes a new instance of the <see cref="HttpServer"/> class.
     /// </summary>
     /// <remarks>
-    /// An instance initialized by this constructor listens for the incoming requests on port 80.
+    /// The new instance listens for incoming requests on
+    /// <see cref="System.Net.IPAddress.Any"/> and port 80.
     /// </remarks>
     public HttpServer ()
     {
@@ -94,18 +96,19 @@ namespace WebSocketSharp.Server
     /// </summary>
     /// <remarks>
     ///   <para>
-    ///   An instance initialized by this constructor listens for the incoming requests on
-    ///   <paramref name="port"/>.
+    ///   The new instance listens for incoming requests on
+    ///   <see cref="System.Net.IPAddress.Any"/> and <paramref name="port"/>.
     ///   </para>
     ///   <para>
-    ///   If <paramref name="port"/> is 443, that instance provides a secure connection.
+    ///   It provides secure connections if <paramref name="port"/> is 443.
     ///   </para>
     /// </remarks>
     /// <param name="port">
-    /// An <see cref="int"/> that represents the port number on which to listen.
+    /// An <see cref="int"/> that represents the number of the port
+    /// on which to listen.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="port"/> isn't between 1 and 65535 inclusive.
+    /// <paramref name="port"/> is less than 1 or greater than 65535.
     /// </exception>
     public HttpServer (int port)
       : this (port, port == 443)
@@ -114,17 +117,21 @@ namespace WebSocketSharp.Server
 
     /// <summary>
     /// Initializes a new instance of the <see cref="HttpServer"/> class with
-    /// the specified HTTP URL.
+    /// the specified <paramref name="url"/>.
     /// </summary>
     /// <remarks>
     ///   <para>
-    ///   An instance initialized by this constructor listens for the incoming requests on
-    ///   the host name and port in <paramref name="url"/>.
+    ///   The new instance listens for incoming requests on the IP address of the
+    ///   host of <paramref name="url"/> and the port of <paramref name="url"/>.
     ///   </para>
     ///   <para>
-    ///   If <paramref name="url"/> doesn't include a port, either port 80 or 443 is used on
-    ///   which to listen. It's determined by the scheme (http or https) in <paramref name="url"/>.
-    ///   (Port 80 if the scheme is http.)
+    ///   Either port 80 or 443 is used if <paramref name="url"/> includes
+    ///   no port. Port 443 is used if the scheme of <paramref name="url"/>
+    ///   is https; otherwise, port 80 is used.
+    ///   </para>
+    ///   <para>
+    ///   The new instance provides secure connections if the scheme of
+    ///   <paramref name="url"/> is https.
     ///   </para>
     /// </remarks>
     /// <param name="url">
@@ -157,10 +164,18 @@ namespace WebSocketSharp.Server
       if (!tryCreateUri (url, out uri, out msg))
         throw new ArgumentException (msg, "url");
 
-      var host = getHost (uri);
+      var host = uri.GetDnsSafeHost (true);
+
       var addr = host.ToIPAddress ();
-      if (!addr.IsLocal ())
-        throw new ArgumentException ("The host part isn't a local host name: " + url, "url");
+      if (addr == null) {
+        msg = "The host part could not be converted to an IP address.";
+        throw new ArgumentException (msg, "url");
+      }
+
+      if (!addr.IsLocal ()) {
+        msg = "The IP address of the host is not a local IP address.";
+        throw new ArgumentException (msg, "url");
+      }
 
       init (host, addr, uri.Port, uri.Scheme == "https");
     }
@@ -170,24 +185,26 @@ namespace WebSocketSharp.Server
     /// the specified <paramref name="port"/> and <paramref name="secure"/>.
     /// </summary>
     /// <remarks>
-    /// An instance initialized by this constructor listens for the incoming requests on
-    /// <paramref name="port"/>.
+    /// The new instance listens for incoming requests on
+    /// <see cref="System.Net.IPAddress.Any"/> and <paramref name="port"/>.
     /// </remarks>
     /// <param name="port">
-    /// An <see cref="int"/> that represents the port number on which to listen.
+    /// An <see cref="int"/> that represents the number of the port
+    /// on which to listen.
     /// </param>
     /// <param name="secure">
-    /// A <see cref="bool"/> that indicates providing a secure connection or not.
-    /// (<c>true</c> indicates providing a secure connection.)
+    /// A <see cref="bool"/>: <c>true</c> if the new instance provides
+    /// secure connections; otherwise, <c>false</c>.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="port"/> isn't between 1 and 65535 inclusive.
+    /// <paramref name="port"/> is less than 1 or greater than 65535.
     /// </exception>
     public HttpServer (int port, bool secure)
     {
-      if (!port.IsPortNumber ())
-        throw new ArgumentOutOfRangeException (
-          "port", "Not between 1 and 65535 inclusive: " + port);
+      if (!port.IsPortNumber ()) {
+        var msg = "Less than 1 or greater than 65535.";
+        throw new ArgumentOutOfRangeException ("port", msg);
+      }
 
       init ("*", System.Net.IPAddress.Any, port, secure);
     }
@@ -198,27 +215,29 @@ namespace WebSocketSharp.Server
     /// </summary>
     /// <remarks>
     ///   <para>
-    ///   An instance initialized by this constructor listens for the incoming requests on
+    ///   The new instance listens for incoming requests on
     ///   <paramref name="address"/> and <paramref name="port"/>.
     ///   </para>
     ///   <para>
-    ///   If <paramref name="port"/> is 443, that instance provides a secure connection.
+    ///   It provides secure connections if <paramref name="port"/> is 443.
     ///   </para>
     /// </remarks>
     /// <param name="address">
-    /// A <see cref="System.Net.IPAddress"/> that represents the local IP address of the server.
+    /// A <see cref="System.Net.IPAddress"/> that represents
+    /// the local IP address on which to listen.
     /// </param>
     /// <param name="port">
-    /// An <see cref="int"/> that represents the port number on which to listen.
+    /// An <see cref="int"/> that represents the number of the port
+    /// on which to listen.
     /// </param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="address"/> is <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="address"/> isn't a local IP address.
+    /// <paramref name="address"/> is not a local IP address.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="port"/> isn't between 1 and 65535 inclusive.
+    /// <paramref name="port"/> is less than 1 or greater than 65535.
     /// </exception>
     public HttpServer (System.Net.IPAddress address, int port)
       : this (address, port, port == 443)
@@ -231,27 +250,29 @@ namespace WebSocketSharp.Server
     /// and <paramref name="secure"/>.
     /// </summary>
     /// <remarks>
-    /// An instance initialized by this constructor listens for the incoming requests on
+    /// The new instance listens for incoming requests on
     /// <paramref name="address"/> and <paramref name="port"/>.
     /// </remarks>
     /// <param name="address">
-    /// A <see cref="System.Net.IPAddress"/> that represents the local IP address of the server.
+    /// A <see cref="System.Net.IPAddress"/> that represents
+    /// the local IP address on which to listen.
     /// </param>
     /// <param name="port">
-    /// An <see cref="int"/> that represents the port number on which to listen.
+    /// An <see cref="int"/> that represents the number of the port
+    /// on which to listen.
     /// </param>
     /// <param name="secure">
-    /// A <see cref="bool"/> that indicates providing a secure connection or not.
-    /// (<c>true</c> indicates providing a secure connection.)
+    /// A <see cref="bool"/>: <c>true</c> if the new instance provides
+    /// secure connections; otherwise, <c>false</c>.
     /// </param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="address"/> is <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="address"/> isn't a local IP address.
+    /// <paramref name="address"/> is not a local IP address.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="port"/> isn't between 1 and 65535 inclusive.
+    /// <paramref name="port"/> is less than 1 or greater than 65535.
     /// </exception>
     public HttpServer (System.Net.IPAddress address, int port, bool secure)
     {
@@ -259,13 +280,14 @@ namespace WebSocketSharp.Server
         throw new ArgumentNullException ("address");
 
       if (!address.IsLocal ())
-        throw new ArgumentException ("Not a local IP address: " + address, "address");
+        throw new ArgumentException ("Not a local IP address.", "address");
 
-      if (!port.IsPortNumber ())
-        throw new ArgumentOutOfRangeException (
-          "port", "Not between 1 and 65535 inclusive: " + port);
+      if (!port.IsPortNumber ()) {
+        var msg = "Less than 1 or greater than 65535.";
+        throw new ArgumentOutOfRangeException ("port", msg);
+      }
 
-      init (null, address, port, secure);
+      init (address.ToString (true), address, port, secure);
     }
 
     #endregion
@@ -329,6 +351,102 @@ namespace WebSocketSharp.Server
     }
 
     /// <summary>
+    /// Gets or sets the path to the document folder of the server.
+    /// </summary>
+    /// <remarks>
+    ///   <para>
+    ///   '/' or '\' is trimmed from the end of the value if any.
+    ///   </para>
+    ///   <para>
+    ///   The set operation does nothing if the server has already
+    ///   started or it is shutting down.
+    ///   </para>
+    /// </remarks>
+    /// <value>
+    ///   <para>
+    ///   A <see cref="string"/> that represents a path to the folder
+    ///   from which to find the requested file.
+    ///   </para>
+    ///   <para>
+    ///   The default value is "./Public".
+    ///   </para>
+    /// </value>
+    /// <exception cref="ArgumentNullException">
+    /// The value specified for a set operation is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    ///   <para>
+    ///   The value specified for a set operation is an empty string.
+    ///   </para>
+    ///   <para>
+    ///   -or-
+    ///   </para>
+    ///   <para>
+    ///   The value specified for a set operation is an invalid path string.
+    ///   </para>
+    ///   <para>
+    ///   -or-
+    ///   </para>
+    ///   <para>
+    ///   The value specified for a set operation is an absolute root.
+    ///   </para>
+    /// </exception>
+    public string DocumentRootPath {
+      get {
+        return _docRootPath;
+      }
+
+      set {
+        if (value == null)
+          throw new ArgumentNullException ("value");
+
+        if (value.Length == 0)
+          throw new ArgumentException ("An empty string.", "value");
+
+        value = value.TrimSlashOrBackslashFromEnd ();
+
+        string full = null;
+        try {
+          full = Path.GetFullPath (value);
+        }
+        catch (Exception ex) {
+          throw new ArgumentException ("An invalid path string.", "value", ex);
+        }
+
+        if (value == "/")
+          throw new ArgumentException ("An absolute root.", "value");
+
+        if (value == "\\")
+          throw new ArgumentException ("An absolute root.", "value");
+
+        if (value.Length == 2 && value[1] == ':')
+          throw new ArgumentException ("An absolute root.", "value");
+
+        if (full == "/")
+          throw new ArgumentException ("An absolute root.", "value");
+
+        full = full.TrimSlashOrBackslashFromEnd ();
+        if (full.Length == 2 && full[1] == ':')
+          throw new ArgumentException ("An absolute root.", "value");
+
+        string msg;
+        if (!canSet (out msg)) {
+          _log.Warn (msg);
+          return;
+        }
+
+        lock (_sync) {
+          if (!canSet (out msg)) {
+            _log.Warn (msg);
+            return;
+          }
+
+          _docRootPath = value;
+        }
+      }
+    }
+
+    /// <summary>
     /// Gets a value indicating whether the server has started.
     /// </summary>
     /// <value>
@@ -377,20 +495,7 @@ namespace WebSocketSharp.Server
       }
 
       set {
-        string msg;
-        if (!canSet (out msg)) {
-          _log.Warn (msg);
-          return;
-        }
-
-        lock (_sync) {
-          if (!canSet (out msg)) {
-            _log.Warn (msg);
-            return;
-          }
-
-          _services.KeepClean = value;
-        }
+        _services.KeepClean = value;
       }
     }
 
@@ -513,62 +618,6 @@ namespace WebSocketSharp.Server
     }
 
     /// <summary>
-    /// Gets or sets the path to the document folder of the server.
-    /// </summary>
-    /// <remarks>
-    ///   <para>
-    ///   '/' or '\' is trimmed from the end of the value if any.
-    ///   </para>
-    ///   <para>
-    ///   The set operation does nothing if the server has already
-    ///   started or it is shutting down.
-    ///   </para>
-    /// </remarks>
-    /// <value>
-    ///   <para>
-    ///   A <see cref="string"/> that represents a path to the folder
-    ///   from which to find the requested file.
-    ///   </para>
-    ///   <para>
-    ///   The default value is "./Public".
-    ///   </para>
-    /// </value>
-    /// <exception cref="ArgumentNullException">
-    /// The value specified for a set operation is <see langword="null"/>.
-    /// </exception>
-    /// <exception cref="ArgumentException">
-    /// The value specified for a set operation is an empty string.
-    /// </exception>
-    public string RootPath {
-      get {
-        return _rootPath;
-      }
-
-      set {
-        if (value == null)
-          throw new ArgumentNullException ("value");
-
-        if (value.Length == 0)
-          throw new ArgumentException ("An empty string.", "value");
-
-        string msg;
-        if (!canSet (out msg)) {
-          _log.Warn (msg);
-          return;
-        }
-
-        lock (_sync) {
-          if (!canSet (out msg)) {
-            _log.Warn (msg);
-            return;
-          }
-
-          _rootPath = value.TrimSlashOrBackslashFromEnd ();
-        }
-      }
-    }
-
-    /// <summary>
     /// Gets the configuration for secure connections.
     /// </summary>
     /// <remarks>
@@ -638,12 +687,12 @@ namespace WebSocketSharp.Server
     }
 
     /// <summary>
-    /// Gets or sets the time to wait for the response to
-    /// the WebSocket Ping or Close.
+    /// Gets or sets the time to wait for the response to the WebSocket Ping or
+    /// Close.
     /// </summary>
     /// <remarks>
-    /// The set operation does nothing if the server has already
-    /// started or it is shutting down.
+    /// The set operation does nothing if the server has already started or
+    /// it is shutting down.
     /// </remarks>
     /// <value>
     ///   <para>
@@ -653,7 +702,7 @@ namespace WebSocketSharp.Server
     ///   The default value is the same as 1 second.
     ///   </para>
     /// </value>
-    /// <exception cref="ArgumentException">
+    /// <exception cref="ArgumentOutOfRangeException">
     /// The value specified for a set operation is zero or less.
     /// </exception>
     public TimeSpan WaitTime {
@@ -662,23 +711,7 @@ namespace WebSocketSharp.Server
       }
 
       set {
-        if (value <= TimeSpan.Zero)
-          throw new ArgumentException ("Zero or less.", "value");
-
-        string msg;
-        if (!canSet (out msg)) {
-          _log.Warn (msg);
-          return;
-        }
-
-        lock (_sync) {
-          if (!canSet (out msg)) {
-            _log.Warn (msg);
-            return;
-          }
-
-          _services.WaitTime = value;
-        }
+        _services.WaitTime = value;
       }
     }
 
@@ -796,17 +829,19 @@ namespace WebSocketSharp.Server
       if (!_secure)
         return true;
 
-      var user = _listener.SslConfiguration.ServerCertificate != null;
+      var byUser = _listener.SslConfiguration.ServerCertificate != null;
 
       var path = _listener.CertificateFolderPath;
-      var port = EndPointListener.CertificateExists (_port, path);
+      var withPort = EndPointListener.CertificateExists (_port, path);
 
-      if (user && port) {
+      var both = byUser && withPort;
+      if (both) {
         _log.Warn ("The certificate associated with the port will be used.");
         return true;
       }
 
-      if (!(user || port)) {
+      var either = byUser || withPort;
+      if (!either) {
         message = "There is no certificate used to authenticate the server.";
         return false;
       }
@@ -814,51 +849,40 @@ namespace WebSocketSharp.Server
       return true;
     }
 
-    private static string convertToString (System.Net.IPAddress address)
+    private string createFilePath (string childPath)
     {
-      return address.AddressFamily == AddressFamily.InterNetworkV6
-             ? String.Format ("[{0}]", address.ToString ())
-             : address.ToString ();
+      childPath = childPath.TrimStart ('/', '\\');
+      return new StringBuilder (_docRootPath, 32)
+             .AppendFormat ("/{0}", childPath)
+             .ToString ()
+             .Replace ('\\', '/');
     }
 
-    private string createFilePath (string path)
+    private static HttpListener createListener (
+      string hostname, int port, bool secure
+    )
     {
-      var parent = _rootPath;
-      var child = path.TrimStart ('/', '\\');
+      var lsnr = new HttpListener ();
 
-      var buff = new StringBuilder (parent, 32);
-      if (parent == "/" || parent == "\\")
-        buff.Append (child);
-      else
-        buff.AppendFormat ("/{0}", child);
+      var schm = secure ? "https" : "http";
+      var pref = String.Format ("{0}://{1}:{2}/", schm, hostname, port);
+      lsnr.Prefixes.Add (pref);
 
-      return buff.ToString ().Replace ('\\', '/');
-    }
-
-    private static string getHost (Uri uri)
-    {
-      return uri.HostNameType == UriHostNameType.IPv6 ? uri.Host : uri.DnsSafeHost;
+      return lsnr;
     }
 
     private void init (
       string hostname, System.Net.IPAddress address, int port, bool secure
     )
     {
-      _hostname = hostname ?? convertToString (address);
+      _hostname = hostname;
       _address = address;
       _port = port;
       _secure = secure;
 
-      var lsnr = new HttpListener ();
-      var pref = String.Format (
-                   "http{0}://{1}:{2}/", secure ? "s" : "", _hostname, port
-                 );
-
-      lsnr.Prefixes.Add (pref);
-      _listener = lsnr;
-
+      _docRootPath = "./Public";
+      _listener = createListener (_hostname, _port, _secure);
       _log = _listener.Log;
-      _rootPath = "./Public";
       _services = new WebSocketServiceManager (_log);
       _sync = new object ();
     }
@@ -887,17 +911,19 @@ namespace WebSocketSharp.Server
                                 : null;
 
       if (evt != null)
-        evt (this, new HttpRequestEventArgs (context, _rootPath));
+        evt (this, new HttpRequestEventArgs (context, _docRootPath));
       else
-        context.Response.StatusCode = (int) HttpStatusCode.NotImplemented;
+        context.Response.StatusCode = 501; // Not Implemented
 
       context.Response.Close ();
     }
 
     private void processRequest (HttpListenerWebSocketContext context)
     {
+      var path = context.RequestUri.AbsolutePath;
+
       WebSocketServiceHost host;
-      if (!_services.InternalTryGetServiceHost (context.RequestUri.AbsolutePath, out host)) {
+      if (!_services.InternalTryGetServiceHost (path, out host)) {
         context.Close (HttpStatusCode.NotImplemented);
         return;
       }
@@ -930,15 +956,12 @@ namespace WebSocketSharp.Server
             }
           );
         }
-        catch (HttpListenerException ex) {
-          if (_state == ServerState.ShuttingDown) {
-            _log.Info ("The receiving is stopped.");
-            break;
-          }
-
-          _log.Fatal (ex.Message);
-          _log.Debug (ex.ToString ());
-
+        catch (HttpListenerException) {
+          _log.Info ("The underlying listener is stopped.");
+          break;
+        }
+        catch (InvalidOperationException) {
+          _log.Info ("The underlying listener is stopped.");
           break;
         }
         catch (Exception ex) {
@@ -995,7 +1018,14 @@ namespace WebSocketSharp.Server
 
     private void startReceiving ()
     {
-      _listener.Start ();
+      try {
+        _listener.Start ();
+      }
+      catch (Exception ex) {
+        var msg = "The underlying listener has failed to start.";
+        throw new InvalidOperationException (msg, ex);
+      }
+
       _receiveThread = new Thread (new ThreadStart (receiveRequest));
       _receiveThread.IsBackground = true;
       _receiveThread.Start ();
@@ -1058,7 +1088,7 @@ namespace WebSocketSharp.Server
 
     private void stopReceiving (int millisecondsTimeout)
     {
-      _listener.Close ();
+      _listener.Stop ();
       _receiveThread.Join (millisecondsTimeout);
     }
 
@@ -1324,13 +1354,13 @@ namespace WebSocketSharp.Server
     }
 
     /// <summary>
-    /// Gets the file with the specified <paramref name="path"/> from
-    /// the document folder of the server.
+    /// Gets the contents of the specified file from the document
+    /// folder of the server.
     /// </summary>
     /// <returns>
     ///   <para>
     ///   An array of <see cref="byte"/> or <see langword="null"/>
-    ///   if not found.
+    ///   if it fails.
     ///   </para>
     ///   <para>
     ///   That array represents the contents of the file.
@@ -1338,7 +1368,7 @@ namespace WebSocketSharp.Server
     /// </returns>
     /// <param name="path">
     /// A <see cref="string"/> that represents a virtual path to
-    /// the file to find from the document folder.
+    /// find the file from the document folder.
     /// </param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="path"/> is <see langword="null"/>.
@@ -1351,7 +1381,7 @@ namespace WebSocketSharp.Server
     ///   -or-
     ///   </para>
     ///   <para>
-    ///   <paramref name="path"/> is an invalid path.
+    ///   <paramref name="path"/> contains "..".
     ///   </para>
     /// </exception>
     [Obsolete ("This method will be removed.")]
@@ -1363,17 +1393,8 @@ namespace WebSocketSharp.Server
       if (path.Length == 0)
         throw new ArgumentException ("An empty string.", "path");
 
-      if (path.IndexOf (':') > -1)
-        throw new ArgumentException ("It contains ':'.", "path");
-
       if (path.IndexOf ("..") > -1)
         throw new ArgumentException ("It contains '..'.", "path");
-
-      if (path.IndexOf ("//") > -1)
-        throw new ArgumentException ("It contains '//'.", "path");
-
-      if (path.IndexOf ("\\\\") > -1)
-        throw new ArgumentException ("It contains '\\\\'.", "path");
 
       path = createFilePath (path);
       return File.Exists (path) ? File.ReadAllBytes (path) : null;
@@ -1434,7 +1455,15 @@ namespace WebSocketSharp.Server
     /// started or it is shutting down.
     /// </remarks>
     /// <exception cref="InvalidOperationException">
-    /// There is no certificate used to authenticate the server.
+    ///   <para>
+    ///   There is no certificate used to authenticate the server.
+    ///   </para>
+    ///   <para>
+    ///   -or-
+    ///   </para>
+    ///   <para>
+    ///   The underlying <see cref="HttpListener"/> has failed to start.
+    ///   </para>
     /// </exception>
     public void Start ()
     {

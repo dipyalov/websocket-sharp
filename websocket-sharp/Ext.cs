@@ -166,28 +166,7 @@ namespace WebSocketSharp
     }
 
 #if !CLIENT_ONLY
-    internal static string CheckIfAvailable (
-      this ServerState state, bool ready, bool start, bool shutting)
-    {
-      return (!ready && (state == ServerState.Ready || state == ServerState.Stop)) ||
-             (!start && state == ServerState.Start) ||
-             (!shutting && state == ServerState.ShuttingDown)
-             ? "This operation isn't available in: " + state.ToString ().ToLower ()
-             : null;
-    }
 #endif
-
-    internal static string CheckIfAvailable (
-      this WebSocketState state, bool connecting, bool open, bool closing, bool closed)
-    {
-      return (!connecting && state == WebSocketState.Connecting) ||
-             (!open && state == WebSocketState.Open) ||
-             (!closing && state == WebSocketState.Closing) ||
-             (!closed && state == WebSocketState.Closed)
-             ? "This operation isn't available in: " + state.ToString ().ToLower ()
-             : null;
-    }
-
     internal static string CheckIfValidProtocols (this string[] protocols)
     {
       return protocols.Contains (
@@ -196,23 +175,6 @@ namespace WebSocketSharp
              : protocols.ContainsTwice ()
                ? "Contains a value twice."
                : null;
-    }
-
-    internal static string CheckIfValidSessionID (this string id)
-    {
-      return id == null || id.Length == 0 ? "'id' is null or empty." : null;
-    }
-
-    internal static bool CheckWaitTime (this TimeSpan time, out string message)
-    {
-      message = null;
-
-      if (time <= TimeSpan.Zero) {
-        message = "Zero or less.";
-        return false;
-      }
-
-      return true;
     }
 
 #if !CLIENT_ONLY
@@ -411,6 +373,13 @@ namespace WebSocketSharp
       return idx > 0 ? original.Substring (0, idx) : original;
     }
 
+    internal static string GetDnsSafeHost (this Uri uri, bool bracketIPv6)
+    {
+      return bracketIPv6 && uri.HostNameType == UriHostNameType.IPv6
+             ? uri.Host
+             : uri.DnsSafeHost;
+    }
+
     internal static string GetMessage (this CloseStatusCode code)
     {
       return code == CloseStatusCode.ProtocolError
@@ -487,17 +456,7 @@ namespace WebSocketSharp
     }
 
 #if !CLIENT_ONLY
-    internal static TcpListenerWebSocketContext GetWebSocketContext (
-      this TcpClient tcpClient,
-      string protocol,
-      bool secure,
-      ServerSslConfiguration sslConfig,
-      Logger logger)
-    {
-      return new TcpListenerWebSocketContext (tcpClient, protocol, secure, sslConfig, logger);
-    }
 #endif
-
     internal static byte[] InternalToByteArray (this ushort value, ByteOrder order)
     {
       var bytes = BitConverter.GetBytes (value);
@@ -885,6 +844,15 @@ namespace WebSocketSharp
     internal static List<TSource> ToList<TSource> (this IEnumerable<TSource> source)
     {
       return new List<TSource> (source);
+    }
+
+    internal static string ToString (
+      this System.Net.IPAddress address, bool bracketIPv6
+    )
+    {
+      return bracketIPv6 && address.AddressFamily == AddressFamily.InterNetworkV6
+             ? String.Format ("[{0}]", address.ToString ())
+             : address.ToString ();
     }
 
     internal static ushort ToUInt16 (this byte[] source, ByteOrder sourceOrder)
