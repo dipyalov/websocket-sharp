@@ -67,6 +67,14 @@ namespace WebSocketSharp
   public class WebSocket : IDisposable
   {
     #region Private Fields
+    private static WaitCallback            s_connectAsync = obj =>
+    {
+      var socket = (WebSocket)obj;
+      if (socket.connect())
+      {
+        socket.open();
+      }
+    };    
 
     private AuthenticationChallenge        _authChallenge;
     private string                         _base64Key;
@@ -96,7 +104,7 @@ namespace WebSocketSharp
     private volatile bool                  _inMessage;
     private volatile Logger                _logger;
     private static readonly int            _maxRetryCountForConnect;
-    private Action<MessageEventArgs>       _message;
+    private WaitCallback                   _message;
     private Queue<MessageEventArgs>        _messageEventQueue;
     private uint                           _nonceCount;
     private string                         _origin;
@@ -118,14 +126,15 @@ namespace WebSocketSharp
     private const string                   _version = "13";
     private TimeSpan                       _waitTime;
 
-#endregion
+    private WaitCallback                   _pongHandlerAsync;
+        #endregion        
 
-#region Internal Fields
+        #region Internal Fields
 
-    /// <summary>
-    /// Represents the empty array of <see cref="byte"/> used internally.
-    /// </summary>
-    internal static readonly byte[] EmptyBytes;
+        /// <summary>
+        /// Represents the empty array of <see cref="byte"/> used internally.
+        /// </summary>
+        internal static readonly byte[] EmptyBytes;
 
     /// <summary>
     /// Represents the length used to determine whether the data should be fragmented in sending.
@@ -251,6 +260,12 @@ namespace WebSocketSharp
       _message = messagec;
       _secure = _uri.Scheme == "wss";
       _waitTime = TimeSpan.FromSeconds (5);
+
+      _pongHandlerAsync = obj =>
+      {
+        var h = (EventHandler)obj;
+        h(this, EventArgs.Empty);
+      };
 
       init ();
     }
@@ -649,6 +664,11 @@ namespace WebSocketSharp
     /// Occurs when the <see cref="WebSocket"/> receives a message.
     /// </summary>
     public event EventHandler<MessageEventArgs> OnMessage;
+
+    /// <summary>
+    /// Occurs when the <see cref="WebSocket"/> receives a pong frame.
+    /// </summary>
+    public event EventHandler OnPong;
 
     /// <summary>
     /// Occurs when the WebSocket connection has been established.
@@ -1052,10 +1072,14 @@ namespace WebSocketSharp
       PayloadData payloadData, bool send, bool receive, bool received
     )
     {
-      Action<PayloadData, bool, bool, bool> closer = close;
-      closer.BeginInvoke (
-        payloadData, send, receive, received, ar => closer.EndInvoke (ar), null
-      );
+            ThreadPool.QueueUserWorkItem(CloseAsyncData.callback, new CloseAsyncData
+            {
+                socket = this,
+                payloadData = payloadData,
+                send = send,
+                receive = receive,
+                received = received
+            });
     }
 
     private bool closeHandshake (byte[] frameAsBytes, bool receive, bool received)
@@ -1332,8 +1356,9 @@ namespace WebSocketSharp
       _message (e);
     }
 
-    private void messagec (MessageEventArgs e)
+    private void messagec (object o)
     {
+      var e = (MessageEventArgs)o;
       do {
         try {
           OnMessage.Emit (this, e);
@@ -1374,7 +1399,7 @@ namespace WebSocketSharp
         e = _messageEventQueue.Dequeue ();
       }
 
-      ThreadPool.QueueUserWorkItem (state => messages (e));
+      ThreadPool.QueueUserWorkItem (state => messages ((MessageEventArgs)state), e);
     }
 
     private void open ()
@@ -1399,7 +1424,7 @@ namespace WebSocketSharp
         e = _messageEventQueue.Dequeue ();
       }
 
-      _message.BeginInvoke (e, ar => _message.EndInvoke (ar), null);
+      ThreadPool.QueueUserWorkItem (_message, e);      
     }
 
     private bool ping (byte[] data)
@@ -1511,6 +1536,13 @@ namespace WebSocketSharp
 
     private bool processPongFrame (WebSocketFrame frame)
     {
+      // use async call to return to processing as quick as possible
+      EventHandler e = this.OnPong;
+      if (e != null)
+      {
+        ThreadPool.QueueUserWorkItem(_pongHandlerAsync, e);
+      }
+
       try {
         _pongReceived.Set ();
       }
@@ -1761,26 +1793,13 @@ namespace WebSocketSharp
 
     private void sendAsync (Opcode opcode, Stream stream, Action<bool> completed)
     {
-      Func<Opcode, Stream, bool> sender = send;
-      sender.BeginInvoke (
-        opcode,
-        stream,
-        ar => {
-          try {
-            var sent = sender.EndInvoke (ar);
-            if (completed != null)
-              completed (sent);
-          }
-          catch (Exception ex) {
-            _logger.Error (ex.ToString ());
-            error (
-              "An error has occurred during the callback for an async send.",
-              ex
-            );
-          }
-        },
-        null
-      );
+      ThreadPool.QueueUserWorkItem(SendAsyncData.callback, new SendAsyncData
+      {
+        socket = this,
+        opcode = opcode,
+        stream = stream,
+        completed = completed,
+      });     
     }
 
     private bool sendBytes (byte[] bytes)
@@ -1897,6 +1916,7 @@ namespace WebSocketSharp
           if (res.HasConnectionClose) {
             releaseClientResources ();
             _tcpClient = new TcpClient (_proxyUri.DnsSafeHost, _proxyUri.Port);
+            _tcpClient.NoDelay = true;
             _stream = _tcpClient.GetStream ();
           }
 
@@ -1919,11 +1939,13 @@ namespace WebSocketSharp
     {
       if (_proxyUri != null) {
         _tcpClient = new TcpClient (_proxyUri.DnsSafeHost, _proxyUri.Port);
+        _tcpClient.NoDelay = true;
         _stream = _tcpClient.GetStream ();
         sendProxyConnectRequest ();
       }
       else {
         _tcpClient = new TcpClient (_uri.DnsSafeHost, _uri.Port);
+        _tcpClient.NoDelay = true;
         _stream = _tcpClient.GetStream ();
       }
 
@@ -2771,14 +2793,7 @@ namespace WebSocketSharp
         return;
       }
 
-      Func<bool> connector = connect;
-      connector.BeginInvoke (
-        ar => {
-          if (connector.EndInvoke (ar))
-            open ();
-        },
-        null
-      );
+      ThreadPool.QueueUserWorkItem(s_connectAsync, this);      
     }
 
     /// <summary>
@@ -2791,6 +2806,23 @@ namespace WebSocketSharp
     public bool Ping ()
     {
       return ping (EmptyBytes);
+    }
+
+    /// <summary>
+    /// Sends ping frame asynchronously
+    /// </summary>
+    public void PingAsync ()
+    {
+      if (_readyState != WebSocketState.Open) {
+        var msg = "The current state of the connection is not Open.";
+        throw new InvalidOperationException (msg);
+      }   
+
+      ThreadPool.QueueUserWorkItem(PingAsyncData.callback, new PingAsyncData
+      {
+        socket = this,
+        data = EmptyBytes,
+      }); 
     }
 
     /// <summary>
@@ -3409,5 +3441,57 @@ namespace WebSocketSharp
     }
 
 #endregion
+
+    private class CloseAsyncData
+    {
+        public WebSocket socket;
+        public PayloadData payloadData;
+        public bool send;
+        public bool receive;
+        public bool received;
+
+        public static WaitCallback callback = obj =>
+        {
+          var data = (CloseAsyncData)obj;
+          data.socket.close (data.payloadData, data.send, data.receive, data.received);
+        };
+    }
+
+    private class SendAsyncData
+    {
+      public WebSocket socket;
+      public Opcode opcode;
+      public Stream stream;
+      public Action<bool> completed;
+
+      public static WaitCallback callback = obj =>
+      {
+        var data = (SendAsyncData)obj;
+        try {
+          bool sent = data.socket.send (data.opcode, data.stream);          
+          if (data.completed != null)
+              data.completed (sent);
+        }
+        catch (Exception ex) {
+          data.socket._logger.Error (ex.ToString ());
+          data.socket.error (
+            "An error has occurred during the callback for an async send.",
+            ex
+          );
+        }
+      };
+    }
+    
+    private class PingAsyncData
+    {
+      public WebSocket socket;
+      public byte[] data;
+
+      public static WaitCallback callback = obj =>
+      {
+        var data = (PingAsyncData)obj;
+        data.socket.send(Fin.Final, Opcode.Ping, data.data, false);
+      };
+    }
   }
 }
